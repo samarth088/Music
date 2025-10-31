@@ -4,3 +4,4 @@ yt-dlp==2024.8.6
 pytgcalls==3.0.0.dev24
 flask==3.0.0
 aiohttp
+ffmpeg
