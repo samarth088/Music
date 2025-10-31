@@ -1,1 +1,6 @@
-
+pyrogram==2.0.106
+tgcrypto==1.2.5
+yt-dlp==2024.8.6
+pytgcalls==3.0.0.dev24
+flask==3.0.0
+aiohttp
