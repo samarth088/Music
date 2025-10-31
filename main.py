@@ -262,21 +262,22 @@ async def main():
         logger.info("Starting bot...")
         await bot.start()
         logger.info("✅ Bot started")
-        
+
         await user.start()
         logger.info("✅ Userbot started")
-        
+
         if PYTGCALLS_AVAILABLE and call:
             await call.start()
             logger.info("✅ PyTgCalls started")
+            await idle()
         else:
             logger.warning("⚠️ PyTgCalls not available - voice features disabled")
-        
-        logger.info("🎉 All systems ready!")
-        await idle()
+            while True:
+                await asyncio.sleep(3600)  # keeps alive without idle()
     except Exception as e:
         logger.critical(f"❌ Failed to start bot: {traceback.format_exc()}")
         raise
+
 
 if __name__ == "__main__":
     import threading
