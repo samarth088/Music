@@ -21,28 +21,51 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Try importing py_tgcalls with error handling
+# Robust pytgcalls import (tries multiple known variants)
+PYTGCALLS_AVAILABLE = False
 PyTgCalls = None
 idle = None
 AudioPiped = None
 HighQualityAudio = None
 
-try:
-    from pytgcalls import PyTgCalls, idle
-    from pytgcalls.types import AudioPiped, HighQualityAudio
-    PYTGCALLS_AVAILABLE = True
-    logger.info("✅ pytgcalls imported successfully")
-except ImportError as e:
-    logger.error(f"❌ Failed to import pytgcalls: {e}")
-    logger.info("Trying alternative import from py_tgcalls...")
+def try_import(module_path, names):
     try:
-        from py_tgcalls import PyTgCalls, idle
-        from py_tgcalls.types import AudioPiped, HighQualityAudio
+        mod = __import__(module_path, fromlist=[None])
+        return tuple(getattr(mod, n) for n in names)
+    except Exception:
+        return None
+
+# Try the most common variants (order matters: prefer stable known ones)
+# 1) py_tgcalls (used by py-tgcalls v2.x)
+res = try_import("py_tgcalls", ("PyTgCalls", "idle"))
+if res:
+    PyTgCalls, idle = res
+    types_res = try_import("py_tgcalls.types", ("AudioPiped", "HighQualityAudio"))
+    if types_res:
+        AudioPiped, HighQualityAudio = types_res
+    PYTGCALLS_AVAILABLE = True
+    logger.info("✅ Imported py_tgcalls (py-tgcalls style)")
+else:
+    # 2) pytgcalls (some dev builds expose things differently)
+    res = try_import("pytgcalls", ("PyTgCalls", "idle"))
+    if res:
+        PyTgCalls, idle = res
+        # try types as pytgcalls.types or pytgcalls.types.input_stream
+        types_res = try_import("pytgcalls.types", ("AudioPiped", "HighQualityAudio")) \
+                    or try_import("pytgcalls.types.input_stream", ("AudioPiped", "HighQualityAudio"))
+        if types_res:
+            AudioPiped, HighQualityAudio = types_res
         PYTGCALLS_AVAILABLE = True
-        logger.info("✅ py_tgcalls imported successfully")
-    except ImportError as e2:
-        logger.critical(f"❌ Both pytgcalls imports failed: {e2}")
-        PYTGCALLS_AVAILABLE = False
+        logger.info("✅ Imported pytgcalls")
+    else:
+        # 3) tgcalls / other variants (some wheels install tgcalls)
+        res = try_import("tgcalls", ("TgCalls",))  # best-effort, rarely used
+        if res:
+            logger.warning("⚠️ Imported 'tgcalls' variant — API may differ")
+            PYTGCALLS_AVAILABLE = False
+        else:
+            logger.critical("❌ PyTgCalls import failed: no supported module found")
+            PYTGCALLS_AVAILABLE = False
 
 # Environment variable validation
 def get_env_var(key: str, required: bool = True) -> Optional[str]:
